@@ -22,13 +22,17 @@ type Oracle struct {
 	chainID    *big.Int
 }
 
-func NewOracle(client *ethclient.Client, contract *bind.BoundContract, privateKeyHex string, chainID *big.Int) (*Oracle, error) {
+func NewOracle(client *ethclient.Client,
+	contract *bind.BoundContract,
+	privateKeyHex string,
+	chainID *big.Int,
+	salt int64) (*Oracle, error) {
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
 		return nil, err
 	}
 
-	source := rand.NewSource(time.Now().UnixNano())
+	source := rand.NewSource(time.Now().UnixNano() + salt)
 
 	return &Oracle{
 		client:     client,

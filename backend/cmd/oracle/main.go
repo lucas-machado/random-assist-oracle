@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"random-assist-oracle/internal/abireader"
+	"strconv"
 	"strings"
 )
 import log "github.com/sirupsen/logrus"
@@ -42,7 +43,13 @@ func main() {
 		log.Fatalf("could not convert chain id environment variable %s to big.Int", cfg.ChainId)
 	}
 
-	oracle, err := NewOracle(client, contract, cfg.PrivateKey, chainId)
+	salt, err := strconv.ParseInt(cfg.Salt, 10, 64)
+
+	if err != nil {
+		log.Fatalf("parsing salt: %v", err)
+	}
+
+	oracle, err := NewOracle(client, contract, cfg.PrivateKey, chainId, salt)
 
 	if err != nil {
 		log.Fatalf("creating oracle: %v", err)

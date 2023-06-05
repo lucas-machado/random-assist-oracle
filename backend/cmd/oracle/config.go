@@ -12,6 +12,7 @@ type Config struct {
 	ContractABIPath string `conf:"default:contract/Bridge.json,env:CONTRACT_ABI_PATH"`
 	ContractAddress string `conf:"default:0x5fbdb2315678afecb367f032d93f642f64180aa3,env:CONTRACT_ADDRESS"`
 	ChainId         string `conf:"default:1337,env:CHAIN_ID"`
+	Salt            string `conf:"default:0,env:RAND_SALT"`
 }
 
 func LoadConfig() (*Config, error) {
