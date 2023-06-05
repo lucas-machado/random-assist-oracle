@@ -5,7 +5,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	abireader "random-assist-oracle/internal/contract"
+	"math/big"
+	"random-assist-oracle/internal/abireader"
 	"strings"
 )
 import log "github.com/sirupsen/logrus"
@@ -34,7 +35,21 @@ func main() {
 	address := common.HexToAddress(cfg.ContractAddress)
 	contract := bind.NewBoundContract(address, parsedABI, client, client, client)
 
-	if contract != nil {
-		log.Println("success!")
+	chainId := new(big.Int)
+	_, ok := chainId.SetString(cfg.ChainId, 10)
+
+	if !ok {
+		log.Fatalf("could not convert chain id environment variable %s to big.Int", cfg.ChainId)
+	}
+
+	oracle, err := NewOracle(client, contract, cfg.PrivateKey, chainId)
+
+	if err != nil {
+		log.Fatalf("creating oracle: %v", err)
+	}
+
+	err = oracle.SendRandomNumbers()
+	if err != nil {
+		log.Errorf("sending random numbers: %v", err)
 	}
 }

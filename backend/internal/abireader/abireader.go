@@ -1,4 +1,4 @@
-package contract
+package abireader
 
 import (
 	"encoding/json"

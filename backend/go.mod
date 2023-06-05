@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/ardanlabs/conf v1.5.0
-	github.com/ethereum/go-ethereum v1.12.0
+	github.com/ethereum/go-ethereum v1.11.0
 	github.com/sirupsen/logrus v1.9.3
 )
 

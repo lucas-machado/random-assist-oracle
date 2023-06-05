@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	Key             string `conf:"env:PRIVATE_KEY"`
+	PrivateKey      string `conf:"env:PRIVATE_KEY"`
 	BlockchainURL   string `conf:"default:http://localhost:8545,env:BLOCKCHAIN_URL"`
-	ContractABIPath string `conf:"default:contract/contract.json,env:CONTRACT_ABI_PATH"`
-	ContractAddress string `conf:"env:CONTRACT_ADDRESS"`
+	ContractABIPath string `conf:"default:contract/Bridge.json,env:CONTRACT_ABI_PATH"`
+	ContractAddress string `conf:"default:0x5fbdb2315678afecb367f032d93f642f64180aa3,env:CONTRACT_ADDRESS"`
+	ChainId         string `conf:"default:1337,env:CHAIN_ID"`
 }
 
 func LoadConfig() (*Config, error) {
