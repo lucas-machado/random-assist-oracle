@@ -5,7 +5,9 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -15,15 +17,17 @@ import (
 )
 
 type Oracle struct {
-	client     *ethclient.Client
-	contract   *bind.BoundContract
-	privateKey *ecdsa.PrivateKey
-	randSource rand.Source
-	chainID    *big.Int
+	client          *ethclient.Client
+	contract        *bind.BoundContract
+	contractAddress common.Address
+	privateKey      *ecdsa.PrivateKey
+	randSource      rand.Source
+	chainID         *big.Int
 }
 
 func NewOracle(client *ethclient.Client,
 	contract *bind.BoundContract,
+	contractAddress common.Address,
 	privateKeyHex string,
 	chainID *big.Int,
 	salt int64) (*Oracle, error) {
@@ -35,20 +39,67 @@ func NewOracle(client *ethclient.Client,
 	source := rand.NewSource(time.Now().UnixNano() + salt)
 
 	return &Oracle{
-		client:     client,
-		contract:   contract,
-		privateKey: privateKey,
-		randSource: source,
-		chainID:    chainID,
+		client:          client,
+		contract:        contract,
+		contractAddress: contractAddress,
+		privateKey:      privateKey,
+		randSource:      source,
+		chainID:         chainID,
 	}, nil
 }
 
-func (o *Oracle) SendRandomNumbers() error {
+func (o *Oracle) Run() error {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			addresses, err := o.readRandomNumbersRequests()
+			if err != nil {
+				return err
+			}
+			fmt.Println("Addresses that requested random numbers:", addresses)
+		}
+	}
+}
+
+func (o *Oracle) readRandomNumbersRequests() ([]common.Address, error) {
+	var addresses []common.Address
+
+	// Define a query to filter logs
+	query := ethereum.FilterQuery{
+		Addresses: []common.Address{o.contractAddress},
+	}
+
+	// Get logs from the blockchain
+	logs, err := o.client.FilterLogs(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Iterate over the logs
+	for _, log := range logs {
+		// Get the event name from the topics
+		eventName := log.Topics[0].Hex()
+
+		// Check if it's a RandomNumberRequested event
+		if eventName == crypto.Keccak256Hash([]byte("RandomNumberRequested(address)")).Hex() {
+			// Decode the address from the data field
+			requesterAddress := common.BytesToAddress(log.Topics[1].Bytes())
+			addresses = append(addresses, requesterAddress)
+		}
+	}
+
+	return addresses, nil
+}
+
+func (o *Oracle) sendRandomNumbers() error {
 	// Create a new random source and generate random numbers
 	r := rand.New(o.randSource)
 	randomNumbers := make([]*big.Int, 1000)
 	for i := 0; i < 1000; i++ {
-		randomNumbers[i] = big.NewInt(int64(r.Int63()))
+		randomNumbers[i] = big.NewInt(r.Int63())
 	}
 
 	// Create a new transactor

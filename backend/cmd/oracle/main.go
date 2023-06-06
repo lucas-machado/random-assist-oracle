@@ -49,14 +49,11 @@ func main() {
 		log.Fatalf("parsing salt: %v", err)
 	}
 
-	oracle, err := NewOracle(client, contract, cfg.PrivateKey, chainId, salt)
+	oracle, err := NewOracle(client, contract, address, cfg.PrivateKey, chainId, salt)
 
 	if err != nil {
 		log.Fatalf("creating oracle: %v", err)
 	}
 
-	err = oracle.SendRandomNumbers()
-	if err != nil {
-		log.Errorf("sending random numbers: %v", err)
-	}
+	log.Fatal(oracle.Run())
 }
