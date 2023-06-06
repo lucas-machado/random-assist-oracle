@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "hardhat/console.sol";
 import "./Bridge.sol"; // path to the Bridge contract file
 
-contract ExampleClient {
+contract ExampleClient is IRandomNumberRequester {
     Bridge public bridge;
     uint256[] public randomNumbers;
     uint256 public counter;
@@ -13,7 +13,8 @@ contract ExampleClient {
         bridge = Bridge(_bridgeAddress);
     }
 
-    function receiveRandomNumbers(uint256[] memory _randomNumbers) public {
+    function receiveRandomNumbers(uint256[] memory _randomNumbers) public override {
+        require(msg.sender == address(bridge), "Only the Bridge contract can send random numbers");
         console.log("Received random numbers! Number of elements: ", _randomNumbers.length);
         randomNumbers = _randomNumbers;
         counter = 0; // reset counter each time new numbers are received

@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	log "github.com/sirupsen/logrus"
 	"math/big"
 	"math/rand"
 	"time"
@@ -23,6 +24,7 @@ type Oracle struct {
 	privateKey      *ecdsa.PrivateKey
 	randSource      rand.Source
 	chainID         *big.Int
+	nextBlockToRead uint64
 }
 
 func NewOracle(client *ethclient.Client,
@@ -60,6 +62,13 @@ func (o *Oracle) Run() error {
 				return err
 			}
 			fmt.Println("Addresses that requested random numbers:", addresses)
+
+			for _, address := range addresses {
+				err := o.sendRandomNumbers(address)
+				if err != nil {
+					log.Errorf("sending random numbers to address %v: %v", addresses, err)
+				}
+			}
 		}
 	}
 }
@@ -70,12 +79,29 @@ func (o *Oracle) readRandomNumbersRequests() ([]common.Address, error) {
 	// Define a query to filter logs
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{o.contractAddress},
+		FromBlock: big.NewInt(int64(o.nextBlockToRead)),
 	}
 
 	// Get logs from the blockchain
 	logs, err := o.client.FilterLogs(context.Background(), query)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(logs) > 0 {
+		if logs[len(logs)-1].BlockNumber < o.nextBlockToRead {
+			return addresses, nil
+		} else {
+			o.nextBlockToRead = logs[len(logs)-1].BlockNumber + 1
+		}
+	} else {
+		header, err := o.client.HeaderByNumber(context.Background(), nil)
+		if err != nil {
+			return nil, err
+		}
+		if o.nextBlockToRead < header.Number.Uint64() {
+			o.nextBlockToRead++
+		}
 	}
 
 	// Iterate over the logs
@@ -94,7 +120,7 @@ func (o *Oracle) readRandomNumbersRequests() ([]common.Address, error) {
 	return addresses, nil
 }
 
-func (o *Oracle) sendRandomNumbers() error {
+func (o *Oracle) sendRandomNumbers(destination common.Address) error {
 	// Create a new random source and generate random numbers
 	r := rand.New(o.randSource)
 	randomNumbers := make([]*big.Int, 1000)
@@ -113,7 +139,7 @@ func (o *Oracle) sendRandomNumbers() error {
 	auth.Value = big.NewInt(0)              // in wei
 
 	// Call the contract method
-	tx, err := o.contract.Transact(auth, "receiveRandomNumbers", randomNumbers)
+	tx, err := o.contract.Transact(auth, "forwardRandomNumbers", destination, randomNumbers)
 	if err != nil {
 		return err
 	}
